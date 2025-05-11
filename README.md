@@ -1,5 +1,10 @@
 # RxAI - Clasificación de Imágenes Médicas con Kubeflow 🚀
 
+[![Pipeline Status](https://img.shields.io/badge/Kubeflow%20Pipeline-active-brightgreen)](https://kubeflow.local/pipelines)
+[![Docker Image](https://img.shields.io/badge/docker-jmontalvof%2Frxai--pipeline-blue)](https://hub.docker.com/r/jmontalvof/rxai-pipeline)
+[![GitHub last commit](https://img.shields.io/github/last-commit/jmontalvof/rxai)](https://github.com/jmontalvof/rxai)
+
+
 Este proyecto utiliza TensorFlow y Kubeflow Pipelines para entrenar modelos CNN sobre imágenes de rayos X, con una arquitectura modular y reproducible.
 
 ---
