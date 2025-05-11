@@ -1,0 +1,7 @@
+# .gitignore
+__pycache__/
+*.zip
+*.pyc
+data/
+venv-kfp/
+*.ipynb_checkpoints

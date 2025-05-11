@@ -1,0 +1,10 @@
+jupyterlab
+tensorflow==2.12
+scikit-learn
+matplotlib
+seaborn
+boto3
+pandas
+numpy
+opencv-python
+pillow

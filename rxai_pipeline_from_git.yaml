@@ -1,0 +1,23 @@
+
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: rxai-git-pipeline-
+spec:
+  entrypoint: main
+  templates:
+    - name: main
+      container:
+        image: python:3.9
+        command: ["sh", "-c"]
+        args:
+          - |
+            apt update && apt install -y git python3-pip &&
+            git clone https://github.com/jmontalvof/rxai.git &&
+            cd rxai &&
+            pip install -r requirements.txt &&
+            python3 main.py
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "1"
