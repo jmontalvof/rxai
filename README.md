@@ -1,81 +1,58 @@
-# RxAI - Clasificación de Imágenes Médicas con Kubeflow 🚀
+# RxAI - Radiografía Inteligente
 
-[![Pipeline Status](https://img.shields.io/badge/Kubeflow%20Pipeline-active-brightgreen)](https://kubeflow.local/pipelines)
-[![Docker Image](https://img.shields.io/badge/docker-jmontalvof%2Frxai--pipeline-blue)](https://hub.docker.com/r/jmontalvof/rxai-pipeline)
-[![GitHub last commit](https://img.shields.io/github/last-commit/jmontalvof/rxai)](https://github.com/jmontalvof/rxai)
+RxAI es una aplicación de inteligencia artificial desarrollada para clasificar imágenes de rayos X en tres clases: **Covid**, **Normal** y **Neumonía Viral**. Este proyecto ha sido diseñado con una arquitectura modular y reproducible utilizando **Kubeflow Pipelines**, contenedores Docker y GitHub Actions para CI/CD.
 
+## 🚀 Características Principales
 
-Este proyecto utiliza TensorFlow y Kubeflow Pipelines para entrenar modelos CNN sobre imágenes de rayos X, con una arquitectura modular y reproducible.
+- Clasificación de imágenes de rayos X con MobileNetV2
+- Ajuste de pesos por clase y tasa de dropout parametrizable
+- Pipeline de entrenamiento automatizado con Kubeflow
+- Imagen Docker lista para despliegue en local o en clúster
+- Validación automática del pipeline y Dockerfile con GitHub Actions
 
----
-
-## 📦 Estructura del proyecto
+## 🧪 Estructura del Proyecto
 
 ```
 rxai/
-├── pipelines/
-│   ├── train_pipeline_parametrizado.py
-│   └── yamls/
-│       ├── rxai_pipeline_parametrizable.yaml
-│       └── clone_and_train.yaml  ← ← Este permite clonar el repo y ejecutar main.py
-├── docker/
-│   └── Dockerfile
-├── data/
-│   └── README.md
-├── docs/
-│   └── resultados.md
-├── scripts/
-│   └── compilar_pipeline.sh
-├── main.py
-└── README.md
+├── data/                        # Imágenes de entrenamiento y validación
+├── docker/                      # Dockerfile y recursos de entorno
+├── pipelines/                   # YAML de Kubeflow pipeline
+├── scripts/                     # Código de entrenamiento y métricas
+├── main.py                      # Entrenamiento CNN base
+├── rxai_pipeline_parametrizable.yaml
+├── rxai_pipeline_from_git_parametrizable.yaml
+├── Dockerfile                   # Imagen con entorno completo
+├── requirements.txt
+└── .github/workflows/           # Acciones de GitHub para validación y despliegue
 ```
 
----
+## 📦 Imagen Docker
 
-## 🧪 ¿Cómo lanzar el pipeline desde Kubeflow?
+Construida con:
 
-1. Ve a **Kubeflow Dashboard → Pipelines → Upload pipeline**
-2. Sube el archivo:  
-   `pipelines/yamls/clone_and_train.yaml`
+- Python 3.9
+- Tensorflow 2.12
+- scikit-learn, matplotlib, seaborn, boto3, opencv-python
 
-3. Dale nombre al pipeline, por ejemplo:
-   ```
-   RxAI Clone and Run
-   ```
-
-4. Al crear un **run**, podrás establecer:
-   - `repo-url`: `https://github.com/jmontalvof/rxai.git`
-   - `script`: `main.py`
-
-5. Ejecuta y observa los logs desde la pestaña **Logs** del paso `main`
-
----
-
-## ☁️ Dataset
-
-El dataset (`dataset.zip`) se encuentra almacenado en MinIO y no está incluido en el repo por límites de GitHub.
-
----
-
-## 🐳 Imagen Docker recomendada
-
-Utiliza tu propia imagen con dependencias preinstaladas:
-
-```
-jmontalvof/rxai-pipeline:latest
+```bash
+docker pull jmontalvof/rxai-pipeline:latest
+docker run -p 8888:8888 jmontalvof/rxai-pipeline:latest
 ```
 
-Puedes modificar el pipeline para usar esta imagen en lugar de `python:3.9`.
+## 📋 Entrenamiento desde Kubeflow
 
----
+1. Carga el pipeline `rxai_pipeline_from_git_parametrizable.yaml`
+2. Crea un experimento en Kubeflow
+3. Ajusta los parámetros del entrenamiento
+4. Ejecuta el pipeline y visualiza los resultados
 
-## 🧠 Resultados
+## ✅ Validación CI
 
-Puedes registrar tus ejecuciones y métricas en:  
-`docs/resultados.md`
+Se ejecutan automáticamente las siguientes validaciones:
 
----
+- Sintaxis del pipeline YAML (`dsl-compile`)
+- Validación del Dockerfile (`docker build`)
 
-## ✨ Autor
+## 📅 Fecha de despliegue inicial
 
-Jorge Montalvo (@jmontalvof)
+11/05/2025
