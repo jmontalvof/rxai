@@ -1,0 +1,183 @@
+# PIPELINE DEFINITION
+# Name: rxai-cnn-pipeline-parametrizado
+# Description: Pipeline con parámetros ajustables para fine-tuning de una CNN
+# Inputs:
+#    class_weight_covid: float [Default: 2.0]
+#    class_weight_normal: float [Default: 1.0]
+#    class_weight_viral: float [Default: 3.0]
+#    dropout_rate: float [Default: 0.7]
+#    epochs: int [Default: 15.0]
+#    freeze_layers: int [Default: -20.0]
+#    learning_rate: float [Default: 0.0003]
+components:
+  comp-train-cnn-component:
+    executorLabel: exec-train-cnn-component
+    inputDefinitions:
+      parameters:
+        class_weight_covid:
+          defaultValue: 2.0
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        class_weight_normal:
+          defaultValue: 1.0
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        class_weight_viral:
+          defaultValue: 3.0
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        dropout_rate:
+          defaultValue: 0.7
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        epochs:
+          defaultValue: 15.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        freeze_layers:
+          defaultValue: -20.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        learning_rate:
+          defaultValue: 0.0003
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+deploymentSpec:
+  executors:
+    exec-train-cnn-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_cnn_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.13.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_cnn_component(\n    dropout_rate: float = 0.7,\n    learning_rate:\
+          \ float = 0.0003,\n    class_weight_covid: float = 2.0,\n    class_weight_normal:\
+          \ float = 1.0,\n    class_weight_viral: float = 3.0,\n    freeze_layers:\
+          \ int = -20,\n    epochs: int = 15\n):\n    import os\n    import zipfile\n\
+          \    import boto3\n    import tensorflow as tf\n    import matplotlib.pyplot\
+          \ as plt\n    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,\
+          \ classification_report\n    import numpy as np\n\n    # Descargar dataset\
+          \ desde MinIO\n    s3 = boto3.client('s3',\n        endpoint_url='http://minio-service.kubeflow:9000',\n\
+          \        aws_access_key_id='minio',\n        aws_secret_access_key='minio123',\n\
+          \        region_name='us-east-1'\n    )\n\n    s3.download_file('rxai-data',\
+          \ 'dataset.zip', 'dataset.zip')\n    with zipfile.ZipFile('dataset.zip',\
+          \ 'r') as zip_ref:\n        zip_ref.extractall('./')\n\n    dataset_path\
+          \ = \"./data\"\n    train_dir = os.path.join(dataset_path, \"train\")\n\
+          \    val_dir = os.path.join(dataset_path, \"test\")\n\n    from tensorflow.keras.preprocessing.image\
+          \ import ImageDataGenerator\n    img_size = (224, 224)\n    batch_size =\
+          \ 32\n\n    train_datagen = ImageDataGenerator(\n        rescale=1./255,\n\
+          \        rotation_range=20,\n        width_shift_range=0.2,\n        height_shift_range=0.2,\n\
+          \        shear_range=0.1,\n        zoom_range=0.2,\n        horizontal_flip=True,\n\
+          \        brightness_range=[0.8, 1.2],\n        channel_shift_range=20,\n\
+          \        fill_mode='nearest'\n    )\n\n    val_datagen = ImageDataGenerator(rescale=1./255)\n\
+          \n    train_generator = train_datagen.flow_from_directory(train_dir, target_size=img_size,\
+          \ batch_size=batch_size, class_mode='categorical')\n    val_generator =\
+          \ val_datagen.flow_from_directory(val_dir, target_size=img_size, batch_size=batch_size,\
+          \ class_mode='categorical', shuffle=False)\n\n    from tensorflow.keras.models\
+          \ import Model\n    from tensorflow.keras.layers import Dense, Dropout,\
+          \ GlobalAveragePooling2D\n    from tensorflow.keras.applications import\
+          \ MobileNetV2\n    from tensorflow.keras.optimizers import Adam\n    from\
+          \ tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping\n\n\
+          \    base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(224,\
+          \ 224, 3))\n\n    # Descongelar parcialmente\n    for layer in base_model.layers[:freeze_layers]:\n\
+          \        layer.trainable = False\n    for layer in base_model.layers[freeze_layers:]:\n\
+          \        layer.trainable = True\n\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n\
+          \    x = Dense(128, activation='relu')(x)\n    x = Dropout(dropout_rate)(x)\n\
+          \    predictions = Dense(3, activation='softmax')(x)\n\n    model = Model(inputs=base_model.input,\
+          \ outputs=predictions)\n    model.compile(optimizer=Adam(learning_rate=learning_rate),\
+          \ loss='categorical_crossentropy', metrics=['accuracy'])\n\n    reduce_lr\
+          \ = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=2, min_lr=1e-6,\
+          \ verbose=1)\n    early_stopping = EarlyStopping(monitor='val_loss', patience=3,\
+          \ restore_best_weights=True)\n\n    class_weights = {0: class_weight_covid,\
+          \ 1: class_weight_normal, 2: class_weight_viral}\n    model.fit(train_generator,\
+          \ validation_data=val_generator, epochs=epochs, class_weight=class_weights,\n\
+          \              callbacks=[reduce_lr, early_stopping])\n\n    model.save(\"\
+          modelo_final.h5\")\n\n    predictions = model.predict(val_generator)\n \
+          \   y_pred = np.argmax(predictions, axis=1)\n    y_true = val_generator.classes\n\
+          \n    cm = confusion_matrix(y_true, y_pred)\n    disp = ConfusionMatrixDisplay(confusion_matrix=cm,\
+          \ display_labels=list(val_generator.class_indices.keys()))\n    disp.plot(xticks_rotation=45)\n\
+          \    plt.savefig(\"matriz_confusion.png\")\n\n    s3.upload_file(\"modelo_final.h5\"\
+          , \"rxai-data\", \"modelo_final.h5\")\n    s3.upload_file(\"matriz_confusion.png\"\
+          , \"rxai-data\", \"matriz_confusion.png\")\n\n"
+        image: jmontalvof/rxai-pipeline:latest
+pipelineInfo:
+  description: "Pipeline con par\xE1metros ajustables para fine-tuning de una CNN"
+  name: rxai-cnn-pipeline-parametrizado
+root:
+  dag:
+    tasks:
+      train-cnn-component:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-cnn-component
+        inputs:
+          parameters:
+            class_weight_covid:
+              componentInputParameter: class_weight_covid
+            class_weight_normal:
+              componentInputParameter: class_weight_normal
+            class_weight_viral:
+              componentInputParameter: class_weight_viral
+            dropout_rate:
+              componentInputParameter: dropout_rate
+            epochs:
+              componentInputParameter: epochs
+            freeze_layers:
+              componentInputParameter: freeze_layers
+            learning_rate:
+              componentInputParameter: learning_rate
+        taskInfo:
+          name: train-cnn-component
+  inputDefinitions:
+    parameters:
+      class_weight_covid:
+        defaultValue: 2.0
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      class_weight_normal:
+        defaultValue: 1.0
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      class_weight_viral:
+        defaultValue: 3.0
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      dropout_rate:
+        defaultValue: 0.7
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      epochs:
+        defaultValue: 15.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      freeze_layers:
+        defaultValue: -20.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      learning_rate:
+        defaultValue: 0.0003
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.13.0
