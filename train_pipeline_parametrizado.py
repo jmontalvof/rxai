@@ -1,6 +1,7 @@
 
 import kfp
 from kfp import dsl
+from pipelines.components.download_dataset_from_s3 import download_dataset_from_s3
 # from kfp.components import create_component_from_func
 
 @dsl.component(
