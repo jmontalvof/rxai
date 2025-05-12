@@ -1,0 +1,56 @@
+name: Launch RxAI Kubeflow Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      repo-url:
+        description: 'Repo URL (solo en ejecución manual)'
+        required: true
+        default: 'https://github.com/jmontalvof/rxai.git'
+      script:
+        description: 'Script to run (solo en ejecución manual)'
+        required: true
+        default: 'main.py'
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: pip install kfp
+
+    - name: Launch RxAI pipeline
+      run: |
+        echo "Modo de ejecución: ${{ github.event_name }}"
+
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "Lanzando pipeline con parámetros manuales"
+          python -c "
+import kfp
+client = kfp.Client(host='http://localhost:8080')
+client.create_run_from_pipeline_package(
+    pipeline_file='rxai_pipeline_from_git_parametrizable.yaml',
+    arguments={
+        'repo-url': '${{ github.event.inputs.repo-url }}',
+        'script': '${{ github.event.inputs.script }}'
+    },
+    experiment_name='RxAI-Manual'
+)
+"
+        else
+          echo "Lanzando pipeline automático desde script"
+          python rxai_train_fromgit.py
+        fi
+
