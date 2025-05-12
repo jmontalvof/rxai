@@ -53,6 +53,20 @@ Se ejecutan automáticamente las siguientes validaciones:
 - Sintaxis del pipeline YAML (`dsl-compile`)
 - Validación del Dockerfile (`docker build`)
 
+## 🚀 Automatización del Pipeline con GitHub Actions
+
+Este proyecto incluye un workflow unificado que permite:
+
+- ✅ Lanzamiento automático del pipeline cada vez que haces push a `main`
+- 🛠 Lanzamiento manual desde GitHub > Actions > `Launch RxAI Kubeflow Pipeline` con entrada personalizada
+
+### Inputs disponibles (modo manual):
+- `repo-url`: URL del repositorio GitHub
+- `script`: nombre del script Python a ejecutar (ej. `main.py`)
+
+El workflow se encuentra en `.github/workflows/launch-kubeflow.yml`
+
+
 ## 📅 Fecha de despliegue inicial
 
 11/05/2025
